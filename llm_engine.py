@@ -21,7 +21,7 @@ def generate_ai_report(timestamp: str, source: str, detail: str, cutoff_active: 
         response = ollama.chat(
             model='llama3.2',
             messages=[
-                {'role': 'system', 'content': SYSTEM_PORT if 'SYSTEM_PORT' in locals() else SYSTEM_PROMPT},
+                {'role': 'system', 'content': SYSTEM_PROMPT},
                 {'role': 'user', 'content': user_prompt}
             ]
         )
