@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BENCHSAFE - MCR Demo Mode</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    body { background-color: #f8f9fa; color: #212529; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; background: #ffffff; border: 2px solid #dee2e6; border-radius: 6px; padding: 20px; }
+
+    /* Top Banner */
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 20px; }
+    .title { font-size: 1.2rem; font-weight: bold; color: #0056b3; }
+    .status { background: #e2e3e5; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
+
+    /* Interactive Demo Trigger Bar */
+    .demo-bar { background: #e9ecef; padding: 12px; border-radius: 4px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #ced4da; }
+    .demo-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+    .demo-btn:hover { background: #bd2130; }
+
+    /* Panels Grid */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .panel { border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; }
+    .panel-header { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #495057; }
+
+    /* Sensor Table */
+    table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+    th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; font-size: 0.9rem; }
+    th { background: #f1f3f5; }
+    .badge-normal { color: #198754; font-weight: bold; }
+    .badge-alert { color: #dc3545; font-weight: bold; animation: flash 1s infinite; }
+
+    /* Event Log Table */
+    .log-table th { background: #e9ecef; }
+    .new-row { background-color: #fff3cd; transition: background-color 2s ease; }
+
+    @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Dashboard Header -->
+    <div class="header">
+      <div class="title">BENCHSAFE: WORKSPACE MONITOR (MCR DEMO)</div>
+      <div id="system-status" class="status">STATUS: MONITORING 🟢</div>
+    </div>
+
+    <!-- MCR Demonstration Action Bar -->
+    <div class="demo-bar">
+      <span><strong>Step 1: Click to simulate ESP32 Sensor Alert</strong></span>
+      <button class="demo-btn" onclick="runSensorDemo()">⚡ Fire Temperature Event (ESP32)</button>
+    </div>
+
+    <!-- Telemetry & Live View -->
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-header">Live Telemetry</div>
+        <table>
+          <thead>
+            <tr><th>Sensor</th><th>Reading</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Temperature</td>
+              <td id="mcr-temp-val">24.5 °C</td>
+              <td id="mcr-temp-stat" class="badge-normal">Normal</td>
+            </tr>
+            <tr>
+              <td>Current</td>
+              <td>0.45 A</td>
+              <td class="badge-normal">Normal</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Camera Feed Overlay</div>
+        <div style="background: #e9ecef; height: 80px; display: flex; align-items: center; justify-content: center; border: 1px dashed #adb5bd; font-family: monospace; font-size: 0.85rem;">
+          [CAM_01: ACTIVE - NORMAL]
+        </div>
+      </div>
+    </div>
+
+    <!-- Combined Event Log -->
+    <div class="panel">
+      <div class="panel-header">Combined Event Log & Verified Incident Reports</div>
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th style="width: 15%;">Time</th>
+            <th style="width: 15%;">Source</th>
+            <th style="width: 30%;">Event Details</th>
+            <th style="width: 40%;">Verified Incident Report</th>
+          </tr>
+        </thead>
+        <tbody id="mcr-log-body">
+          <!-- Initial Log State -->
+          <tr>
+            <td>14:30:12</td>
+            <td><strong>VISION</strong></td>
+            <td>Missing Safety Glasses</td>
+            <td>Unsafe visual condition flagged at 14:30:12.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Combined Event Log -->
+    <div class="panel">
+      <div class="panel-header">Combined Event Log & Verified Incident Reports</div>
+      
+      <!-- History Search Bar Added Here -->
+      <div style="margin-bottom: 12px;">
+        <input type="text" id="search-bar" placeholder="Search log history by keyword or timestamp..." onkeyup="filterHistory()" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.85rem;">
+      </div>
+
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th style="width: 15%;">Time</th>
+            <th style="width: 15%;">Source</th>
+            <th style="width: 30%;">Event Details</th>
+            <th style="width: 40%;">Verified Incident Report</th>
+          </tr>
+        </thead>
+        <tbody id="mcr-log-body">
+          <!-- Initial Log State -->
+          <tr>
+            <td>14:30:12</td>
+            <td><strong>VISION</strong></td>
+            <td>Missing Safety Glasses</td>
+            <td>Unsafe visual condition flagged at 14:30:12.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  <script>
+    function runSensorDemo() {
+      // 1. Update Sensor Telemetry Box
+      document.getElementById("mcr-temp-val").innerText = "54.2 °C";
+      const statElem = document.getElementById("mcr-temp-stat");
+      statElem.innerText = "CRITICAL (>50°C)";
+      statElem.className = "badge-alert";
+
+      // 2. Update System Header Badge
+      const statusBadge = document.getElementById("system-status");
+      statusBadge.innerText = "STATUS: ALARM / CUTOFF 🔴";
+      statusBadge.style.background = "#f8d7da";
+      statusBadge.style.color = "#721c24";
+
+      // 3. Inject Sensor Event Entry into Log Table
+      const logBody = document.getElementById("mcr-log-body");
+      const timeStr = new Date().toLocaleTimeString();
+      
+      const newRow = document.createElement("tr");
+      newRow.className = "new-row";
+      newRow.innerHTML = `
+        <td>${timeStr}</td>
+        <td><strong style="color: #0d6efd;">SENSOR</strong></td>
+        <td>High Temp (>50°C)</td>
+        <td>Temp spike detected (54.2°C). Local cutoff activated at ${timeStr}.</td>
+      `;
+      
+      // Prepend to top of log list
+      logBody.insertBefore(newRow, logBody.firstChild);
+    }
+  </script>
+</body>
+</html>

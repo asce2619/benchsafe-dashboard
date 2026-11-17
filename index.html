@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BENCHSAFE: AI Workspace Monitoring Dashboard</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --panel-bg: #1e293b;
+      --card-bg: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #475569;
+      --primary: #3b82f6;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    
+    html, body { width: 100%; height: 100vh; overflow: hidden; background-color: var(--bg-color); color: var(--text-main); }
+    
+    .window-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; padding: 16px; gap: 16px; }
+
+    .header-bar {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .brand-title { font-size: 1.2rem; font-weight: 700; color: #60a5fa; display: flex; align-items: center; gap: 10px; }
+    .status-badge {
+      background: #064e3b;
+      color: #6ee7b7;
+      border: 1px solid #047857;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot { width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; animation: blink 2s infinite; }
+
+    .controls-bar {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .controls-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .btn {
+      background-color: var(--card-bg);
+      color: #fff;
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { background-color: var(--primary); border-color: var(--primary); }
+
+    .dashboard-body { display: grid; grid-template-rows: 1fr 1.2fr; gap: 16px; flex-grow: 1; min-height: 0; }
+    .top-split { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; min-height: 0; }
+
+    .panel-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel-title { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+    /* Camera Viewfinder & Pop-up Warning Overlays */
+    .camera-frame {
+      flex: 1;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      font-family: monospace;
+      color: #64748b;
+    }
+    .cam-tag { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; z-index: 2; }
+    
+    .popup-overlay-container {
+      position: absolute;
+      top: 40px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+    .popup-alert {
+      background: rgba(239, 68, 68, 0.95);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      animation: pop-in 0.3s ease, flash-banner 1s infinite;
+    }
+    .popup-alert.visible { display: flex; }
+
+    .gauge-group { display: flex; flex-direction: column; gap: 16px; justify-content: center; flex: 1; }
+    .gauge-item { display: flex; flex-direction: column; gap: 4px; }
+    .gauge-header { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; }
+    .gauge-track { width: 100%; height: 8px; background-color: var(--card-bg); border-radius: 4px; overflow: hidden; }
+    .gauge-bar { height: 100%; width: 25%; background-color: var(--success); transition: all 0.4s ease; }
+
+    /* Search & Export Toolbar Layout */
+    .search-export-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .log-table-wrapper { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+    .log-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    .log-table th { background: var(--card-bg); color: var(--text-muted); padding: 10px; position: sticky; top: 0; }
+    .log-table td { padding: 10px; border-top: 1px solid var(--border-color); }
+    .log-table tr:hover { background-color: rgba(255,255,255,0.03); }
+
+    .tag-sensor { background: #1e3a8a; color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+    .tag-vision { background: #78350f; color: #fde047; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes flash-banner { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    @keyframes pop-in { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div class="window-wrapper">
+    <div class="header-bar">
+      <div class="brand-title">BENCHSAFE: AI WORKSPACE MONITORING DASHBOARD</div>
+      <div id="status-pill" class="status-badge">
+        <span class="status-dot"></span>
+        STATUS: MONITORING 🟢
+      </div>
+    </div>
+
+    <!-- Simulation Triggers Bar (Temporary until hardware hooks up) -->
+    <div class="controls-bar">
+      <span class="controls-label">Test Triggers:</span>
+      <button class="btn" onclick="sendTrigger('SENSOR', 'High Temp (>50°C)', true)">🔥 High Temp</button>
+      <button class="btn" onclick="sendTrigger('SENSOR', 'Over-Current (>2.0A)', true)">⚡ Over-Current</button>
+      <button class="btn" onclick="sendTrigger('VISION', 'Missing Safety Glasses', false)">👓 Missing Glasses (Vision)</button>
+      <button class="btn" onclick="sendTrigger('SENSOR', 'Tool Near Table Edge (Fall Risk)', true)">⚠️ Edge Proximity Alert</button>
+      <button class="btn" onclick="resetSystem()" style="margin-left: auto;">🔄 Reset All / Mute Alarm</button>
+    </div>
+
+    <div class="dashboard-body">
+      <div class="top-split">
+        <!-- Live AI Vision Feed & Pop-up Warning Overlays -->
+        <div class="panel-card">
+          <div class="panel-title">Live AI Vision Feed & Safety Overlays <span>1080p / 30 FPS</span></div>
+          <div class="camera-frame">
+            <div class="cam-tag">CAM_01: WORKBENCH</div>
+            <span style="font-size: 0.8rem; color: #475569;">[AI OBJECT & SAFETY MONITOR ACTIVE]</span>
+            
+            <!-- Pop-up Warning Banners Inside Camera Feed -->
+            <div class="popup-overlay-container">
+              <div id="popup-glasses" class="popup-alert">
+                <span>👓 WARNING: Safety Glasses Not Detected!</span>
+                <span style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
+              </div>
+              <div id="popup-edge" class="popup-alert">
+                <span>⚠️ WARNING: Tool Near Table Edge (Fall Risk)!</span>
+                <span style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strict Physical Sensor Telemetry Box (Temp & Current Only) -->
+        <div class="panel-card">
+          <div class="panel-title">Physical Sensor Telemetry</div>
+          <div class="gauge-group">
+            <div class="gauge-item">
+              <div class="gauge-header"><span>Temperature</span><span id="txt-temp" style="font-family: monospace;">24.5 °C</span></div>
+              <div class="gauge-track"><div id="bar-temp" class="gauge-bar" style="width: 25%;"></div></div>
+            </div>
+            <div class="gauge-item">
+              <div class="gauge-header"><span>Current Load</span><span id="txt-curr" style="font-family: monospace;">0.45 A</span></div>
+              <div class="gauge-track"><div id="bar-curr" class="gauge-bar" style="width: 15%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Combined Event Log (Search Bar & CSV Export on Top) -->
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>Combined Event Log & AI Verified Incident Reports</span>
+          <span style="font-size: 0.75rem; font-family: monospace; color: #38bdf8; background: rgba(59,130,246,0.15); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(59,130,246,0.3);">
+            Total Reports: <strong id="total-count">0</strong> | Showing: <strong id="visible-count">0</strong>
+          </span>
+        </div>
+        
+        <div class="search-export-container">
+          <input type="text" id="search-bar" class="search-input" placeholder="Search event history by date, keyword, or report detail..." onkeyup="filterLogs()">
+          <button class="btn" onclick="exportCSV()">📥 Export CSV</button>
+        </div>
+
+        <div class="log-table-wrapper">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th style="width: 20%;">Date & Time</th>
+                <th style="width: 12%;">Source</th>
+                <th style="width: 26%;">Event Details</th>
+                <th style="width: 42%;">Verified Incident Report</th>
+              </tr>
+            </thead>
+            <tbody id="log-rows">
+              <!-- Dynamically populated from SQLite database -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:8000";
+    let audioContext = null;
+    let alarmInterval = null;
+    let isConnected = true;
+
+    // --- Web Audio Beeping Alarm ---
+    function startBeepAlarm() {
+      if (alarmInterval) return;
+
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        alarmInterval = setInterval(() => {
+          if (!audioContext) return;
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(880, audioContext.currentTime);
+          
+          gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+          
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          
+          osc.start();
+          osc.stop(audioContext.currentTime + 0.3);
+        }, 800);
+      } catch (e) {
+        console.warn("AudioContext error:", e);
+      }
+    }
+
+    function stopBeepAlarm() {
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+    }
+
+    // --- Backend Connection Heartbeat / Fault Tolerance ---
+    async function checkServerConnection() {
+      const statusPill = document.getElementById("status-pill");
+      try {
+        const res = await fetch(`${API_URL}/api/logs`);
+        if (res.ok) {
+          const data = await res.json();
+          renderLogs(data.events);
+          
+          if (!isConnected) {
+            isConnected = true;
+          }
+          statusPill.style.background = "#064e3b";
+          statusPill.style.color = "#6ee7b7";
+          statusPill.style.borderColor = "#047857";
+          statusPill.innerHTML = `<span class="status-dot"></span> STATUS: MONITORING 🟢`;
+        } else {
+          throw new Error("Server error");
+        }
+      } catch (err) {
+        if (isConnected) {
+          isConnected = false;
+          statusPill.style.background = "#7f1d1d";
+          statusPill.style.color = "#fca5a5";
+          statusPill.style.borderColor = "#991b1b";
+          statusPill.innerHTML = `<span class="status-dot" style="background-color: var(--danger);"></span> STATUS: CONNECTION LOST 🔴`;
+        }
+      }
+    }
+
+    function renderLogs(events) {
+      const tbody = document.getElementById("log-rows");
+      tbody.innerHTML = "";
+      events.forEach(evt => {
+        const tr = document.createElement("tr");
+        const tagClass = evt.source === "SENSOR" ? "tag-sensor" : "tag-vision";
+        tr.innerHTML = `
+          <td style="font-family: monospace; font-size: 0.8rem;">${evt.timestamp}</td>
+          <td><span class="${tagClass}">${evt.source}</span></td>
+          <td style="font-weight: 600;">${evt.detail}</td>
+          <td>${evt.report}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      // Update counters
+      document.getElementById("total-count").innerText = events.length;
+      filterLogs(); // re-apply filter count
+    }
+
+    async function sendTrigger(source, detail, cutoff) {
+      startBeepAlarm();
+
+      const statusPill = document.getElementById("status-pill");
+      statusPill.style.background = "#7f1d1d";
+      statusPill.style.color = "#fca5a5";
+      statusPill.style.borderColor = "#991b1b";
+      statusPill.innerHTML = `<span class="status-dot" style="background-color: var(--danger);"></span> STATUS: ALARM / CUTOFF 🔴`;
+
+      if (detail.includes("Temp")) {
+        document.getElementById("txt-temp").innerText = "54.2 °C (CRITICAL)";
+        document.getElementById("bar-temp").style.width = "85%";
+        document.getElementById("bar-temp").style.backgroundColor = "var(--danger)";
+      } else if (detail.includes("Current")) {
+        document.getElementById("txt-curr").innerText = "2.85 A (OVERLOAD)";
+        document.getElementById("bar-curr").style.width = "90%";
+        document.getElementById("bar-curr").style.backgroundColor = "var(--danger)";
+      } else if (detail.includes("Glasses")) {
+        document.getElementById("popup-glasses").classList.add("visible");
+      } else if (detail.includes("Edge")) {
+        document.getElementById("popup-edge").classList.add("visible");
+      }
+
+      try {
+        await fetch(`${API_URL}/api/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source, detail, cutoff_active: cutoff })
+        });
+        checkServerConnection();
+      } catch (e) {
+        alert("Make sure main.py is running in VS Code terminal!");
+      }
+    }
+
+    function resetSystem() {
+      stopBeepAlarm();
+
+      const statusPill = document.getElementById("status-pill");
+      statusPill.style.background = "#064e3b";
+      statusPill.style.color = "#6ee7b7";
+      statusPill.style.borderColor = "#047857";
+      statusPill.innerHTML = `<span class="status-dot"></span> STATUS: MONITORING 🟢`;
+
+      document.getElementById("txt-temp").innerText = "24.5 °C";
+      document.getElementById("bar-temp").style.width = "25%";
+      document.getElementById("bar-temp").style.backgroundColor = "var(--success)";
+
+      document.getElementById("txt-curr").innerText = "0.45 A";
+      document.getElementById("bar-curr").style.width = "15%";
+      document.getElementById("bar-curr").style.backgroundColor = "var(--success)";
+
+      document.getElementById("popup-glasses").classList.remove("visible");
+      document.getElementById("popup-edge").classList.remove("visible");
+    }
+
+    function filterLogs() {
+      const q = document.getElementById("search-bar").value.toLowerCase();
+      const rows = document.querySelectorAll("#log-rows tr");
+      let visible = 0;
+      rows.forEach(r => {
+        const match = r.innerText.toLowerCase().includes(q);
+        r.style.display = match ? "" : "none";
+        if (match) visible++;
+      });
+      document.getElementById("visible-count").innerText = rows.length > 0 ? visible : 0;
+    }
+
+    // Export SQLite event logs to a downloadable CSV file
+    async function exportCSV() {
+      try {
+        const res = await fetch(`${API_URL}/api/logs`);
+        const data = await res.json();
+        let csv = "Timestamp,Source,Event Detail,Verified Incident Report\n";
+        data.events.forEach(e => {
+          csv += `"${e.timestamp}","${e.source}","${e.detail}","${e.report}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `benchsafe_audit_log_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+      } catch (err) {
+        alert("Could not export logs. Check server connection.");
+      }
+    }
+
+    // Initial fetch + Poll every 4 seconds for heartbeat
+    checkServerConnection();
+    setInterval(checkServerConnection, 4000);
+  </script>
+</body>
+</html>
