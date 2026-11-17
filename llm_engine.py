@@ -1,4 +1,3 @@
-import time
 import ollama
 
 SYSTEM_PROMPT = """You are the BENCHSAFE AI Workspace Safety Assistant.
@@ -17,18 +16,18 @@ def generate_ai_report(timestamp: str, source: str, detail: str, cutoff_active: 
         f"Event Detail: {detail}\n"
         f"Hardware Cutoff Active: {cutoff_active}"
     )
-
+    
     try:
         response = ollama.chat(
             model='llama3.2',
             messages=[
-                {'role': 'system', 'content': SYSTEM_PROMPT},
+                {'role': 'system', 'content': SYSTEM_PORT if 'SYSTEM_PORT' in locals() else SYSTEM_PROMPT},
                 {'role': 'user', 'content': user_prompt}
             ]
         )
         return response['message']['content'].strip()
     except Exception:
-        # Clean fallback text without redundant timestamp/source repetition
+        # Clean fallback text if Ollama is offline
         if "Temp" in detail:
             return "Overheating temperature detected on soldering tool. Local power cutoff activated."
         elif "Current" in detail:
