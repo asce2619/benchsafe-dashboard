@@ -21,7 +21,7 @@ A professional, fault-tolerant workspace safety monitoring dashboard and backend
 * **Frontend:** HTML5, CSS3, JavaScript (Vanilla ES6), Web Audio API
 * **Backend:** Python, FastAPI, SQLite
 * **AI / LLM:** Ollama (`Llama 3.2`), Roboflow / YOLO (Object Detection)
-* **Hardware Interfacing (Target):** ESP32-S3 Microcontroller, MLX90640 Thermal Camera, ACS712 Current Sensor, Ultrasonic Motion Sensors (`HC-SR04`)
+* **Hardware Interfacing (Target):** ESP32-S3 Microcontroller, MLX90640 Thermal Camera, WCS1800 Current Sensor, Ultrasonic Motion Sensors (`HC-SR04`)
 
 ---
 
